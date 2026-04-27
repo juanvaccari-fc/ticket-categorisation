@@ -154,9 +154,18 @@ Defined as the minimum tasks required to maintain the current level of service i
     for i in range(0, len(all_tickets), batch_size):
         batch = all_tickets[i : i + batch_size]
         print(f"\n--- Processing Batch {i//batch_size + 1} ({batch[0]['key']} to {batch[-1]['key']}) ---")
-        
-        prompt = f"{investment_definitions}\n\nCategorize these tickets. Return ONLY a JSON array:\n{json.dumps(batch)}"
-        
+
+        # Create a clear instruction for the structure
+        structure_instruction = """
+        For each ticket, return a JSON object with exactly these keys:
+        - "key": the ticket key
+        - "sub_category": the specific sub-category name
+        - "reason": a short explanation (DO NOT use backslashes, newlines, or special escape characters in this text)
+        """
+
+        # Update the prompt string
+        prompt = f"{investment_definitions}\n{structure_instruction}\n\nCategorize these tickets. Return ONLY a valid JSON array:\n{json.dumps(batch)}"
+       
         ai_response_raw = get_bedrock_categorization(prompt)
         
         if ai_response_raw:
