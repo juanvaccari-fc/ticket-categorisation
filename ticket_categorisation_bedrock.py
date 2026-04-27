@@ -160,7 +160,7 @@ Defined as the minimum tasks required to maintain the current level of service i
         For each ticket, return a JSON object with exactly these keys:
         - "key": the ticket key
         - "sub_category": the specific sub-category name
-        - "reason": a short explanation (DO NOT use backslashes, newlines, or special escape characters in this text)
+        - "reason": a short explanation of why the ticket belongs to that category and sub-category (DO NOT use backslashes, newlines, or special escape characters in this text)
         """
 
         # Update the prompt string
@@ -170,9 +170,19 @@ Defined as the minimum tasks required to maintain the current level of service i
         
         if ai_response_raw:
             try:
-                # Clean markdown if present
-                cleaned_json = ai_response_raw.strip().replace("```json", "").replace("```", "")
-                ai_results = json.loads(cleaned_json)
+
+                # Find the start and end of the actual JSON array
+                start_index = ai_response_raw.find("[")
+                end_index = ai_response_raw.rfind("]")
+                
+                if start_index != -1 and end_index != -1:
+                    cleaned_json = ai_response_raw[start_index:end_index+1]
+                    
+                    # This handles common LLM escaping mistakes
+                    # It replaces problematic backslashes that aren't valid JSON escapes
+                    cleaned_json = cleaned_json.replace('\\', '\\\\')
+                    
+                    ai_results = json.loads(cleaned_json)
                 
                 for res in ai_results:
                     key = res.get('key')
