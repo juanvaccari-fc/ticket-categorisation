@@ -157,10 +157,14 @@ Defined as the minimum tasks required to maintain the current level of service i
 
         # Create a clear instruction for the structure
         structure_instruction = """
-        For each ticket, return a JSON object with exactly these keys:
-        - "key": the ticket key
-        - "sub_category": the specific sub-category name
-        - "reason": a short explanation of why the ticket belongs to that category and sub-category (DO NOT use backslashes, newlines, or special escape characters in this text)
+        Return ONLY a valid JSON array of objects. 
+        CRITICAL: If you use double quotes inside the "reason" string, you MUST escape them with a backslash (e.g., \\"like this\\"). 
+        Better yet, use single quotes inside the strings to avoid breaking the JSON.
+
+        Each object must have:
+        - "key": ticket key
+        - "subCategory": sub-category name
+        - "reason": short explanation
         """
 
         # Update the prompt string
@@ -186,7 +190,7 @@ Defined as the minimum tasks required to maintain the current level of service i
                 
                 for res in ai_results:
                     key = res.get('key')
-                    ai_cat = res.get('sub_category')
+                    ai_cat = res.get('subCategory')
                     jira_cat = next((t['current_jira_category'] for t in batch if t['key'] == key), "Unknown")
                     status = "MATCH" if ai_cat == jira_cat else "MISMATCH"
                     if status == "MISMATCH":
