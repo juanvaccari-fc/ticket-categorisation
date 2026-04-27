@@ -36,7 +36,55 @@ def get_bedrock_categorization(prompt):
 
 # ... [Keep determine_jira_setting_category and the rest of the script as is] ...
 
-def determine_jira_setting_category(issue):
+def determine_jira_setting_category(issue, jira_client):
+    # 1. Try to find the Parent (the Epic)
+    # Modern Jira uses 'parent'; older versions/APIs might use 'customfield_10014'
+    parent_id = None
+    if hasattr(issue.fields, 'parent'):
+        parent_id = issue.fields.parent.key
+    elif hasattr(issue.fields, 'customfield_10014'): # Common 'Epic Link' ID
+        parent_id = getattr(issue.fields, 'customfield_10014')
+
+    if parent_id:
+        try:
+            # We need to fetch the actual Epic issue to see ITS custom fields
+            epic = jira_client.issue(parent_id)
+
+            # 1. Get the field object
+            category_obj = getattr(epic.fields, 'customfield_10188', None)
+
+            # 2. Extract the string value if the object exists
+            # We use getattr(category_obj, 'value', None) to avoid errors if the field is empty
+            investment_category = getattr(category_obj, 'value', None) if category_obj else None
+
+
+            mapping = {
+                "New capability": "New Capabilities",
+                "Quality Improvement": "Quality Improvements",
+                "Engineering productivity": "Engineering Productivity",
+                "Routine Operational Procedure": "Regular/routine operational procedures",
+                "Maintenance": "Maintenance"
+            }
+            
+            if investment_category in mapping:
+                return mapping[investment_category]
+        except Exception as e:
+            print(f"Error fetching epic {parent_id}: {e}")
+
+    # 2. Fallback to Issue Type Map if no Epic category was found
+    it_map = {
+        "Story": "New Capabilities",
+        "Quality Improvement": "Quality Improvements",
+        "Productivity Task": "Engineering Productivity",
+        "Bug": "Functional Bug Fixing",
+        "Operational Task": "Regular/routine operational procedures",
+        "Maintenance Task": "Maintenance",
+        "Incident Action": "Incident Support"
+    }
+    return it_map.get(issue.fields.issuetype.name, "Uncategorized")
+
+
+def determine_jira_setting_category_old(issue):
     # (No changes needed here)
     epic_link = getattr(issue.fields, 'epic_link', None)
     if epic_link:
@@ -53,7 +101,7 @@ def determine_jira_setting_category(issue):
 
     it_map = {
         "Story": "New Capabilities",
-        "Improvement": "Quality Improvements",
+        "Quality Improvement": "Quality Improvements",
         "Productivity Task": "Engineering Productivity",
         "Bug": "Functional Bug Fixing",
         "Operational Task": "Regular/routine operational procedures",
@@ -75,7 +123,7 @@ def main():
 
     jira = JIRA(server=jira_url, basic_auth=(jira_username, jira_api_token))
 
-    jql_query = f"project IN (STCP, STCC) AND resolved >= '{start_date}' AND resolved <= '{end_date}'"
+    jql_query = f"project IN (STCP) AND resolved >= '{start_date}' AND resolved <= '{end_date}' AND issuetype NOT IN subtaskIssueTypes()"
     print(f"Fetching tickets with JQL: {jql_query}")
 
     issues = jira.search_issues(jql_query, maxResults=100) 
@@ -144,7 +192,7 @@ Defined as the minimum tasks required to maintain the current level of service i
             "summary": issue.fields.summary,
             "description": (issue.fields.description or "No description")[:500], # Truncate long descriptions
             "issue_type": issue.fields.issuetype.name,
-            "current_jira_category": determine_jira_setting_category(issue)
+            "current_jira_category": determine_jira_setting_category(issue, jira)
         })
 
     # 2. Split tickets into batches of 10
