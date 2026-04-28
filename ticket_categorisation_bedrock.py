@@ -59,9 +59,9 @@ def determine_jira_setting_category(issue, jira_client):
 
 
             mapping = {
-                "New capability": "New Capabilities",
+                "New Capability": "New Capabilities",
                 "Quality Improvement": "Quality Improvements",
-                "Engineering productivity": "Engineering Productivity",
+                "Engineering Productivity": "Engineering Productivity",
                 "Routine Operational Procedure": "Regular/routine operational procedures",
                 "Maintenance": "Maintenance"
             }
@@ -74,42 +74,15 @@ def determine_jira_setting_category(issue, jira_client):
     # 2. Fallback to Issue Type Map if no Epic category was found
     it_map = {
         "Story": "New Capabilities",
-        "Quality Improvement": "Quality Improvements",
+        "Improvement": "Quality Improvements",
         "Productivity Task": "Engineering Productivity",
         "Bug": "Functional Bug Fixing",
         "Operational Task": "Regular/routine operational procedures",
+        "Tech Support": "Regular/routine operational procedures",
         "Maintenance Task": "Maintenance",
         "Incident Action": "Incident Support"
     }
     return it_map.get(issue.fields.issuetype.name, "Uncategorized")
-
-
-def determine_jira_setting_category_old(issue):
-    # (No changes needed here)
-    epic_link = getattr(issue.fields, 'epic_link', None)
-    if epic_link:
-        investment_category = getattr(issue.fields, 'customfield_10188', None)
-        mapping = {
-            "New capability": "New Capabilities",
-            "Quality Improvement": "Quality Improvements",
-            "Engineering productivity": "Engineering Productivity",
-            "Routine operational procedure": "Regular/routine operational procedures",
-            "Maintenance": "Maintenance"
-        }
-        if investment_category in mapping:
-            return mapping[investment_category]
-
-    it_map = {
-        "Story": "New Capabilities",
-        "Quality Improvement": "Quality Improvements",
-        "Productivity Task": "Engineering Productivity",
-        "Bug": "Functional Bug Fixing",
-        "Operational Task": "Regular/routine operational procedures",
-        "Maintenance Task": "Maintenance",
-        "Incident Action": "Incident Support"
-    }
-    return it_map.get(issue.fields.issuetype.name, "Uncategorized")
-
 
 def main():
     config = configparser.ConfigParser()
@@ -212,13 +185,15 @@ Defined as the minimum tasks required to maintain the current level of service i
         Each object must have:
         - "key": ticket key
         - "subCategory": sub-category name
-        - "reason": short explanation
+        - "reason": short explanation justifying the chosen investment category
         """
 
         # Update the prompt string
         prompt = f"{investment_definitions}\n{structure_instruction}\n\nCategorize these tickets. Return ONLY a valid JSON array:\n{json.dumps(batch)}"
        
         ai_response_raw = get_bedrock_categorization(prompt)
+        
+        ai_results = []
         
         if ai_response_raw:
             try:
