@@ -96,7 +96,7 @@ def main():
 
     jira = JIRA(server=jira_url, basic_auth=(jira_username, jira_api_token))
 
-    jql_query = f"project IN (STCP) AND resolved >= '{start_date}' AND resolved <= '{end_date}' AND issuetype NOT IN subtaskIssueTypes()"
+    jql_query = f"project IN ({project_keys}) AND resolved >= '{start_date}' AND resolved <= '{end_date}' AND issuetype NOT IN subtaskIssueTypes()"
     print(f"Fetching tickets with JQL: {jql_query}")
 
     issues = jira.search_issues(jql_query, maxResults=100) 
