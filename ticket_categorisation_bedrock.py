@@ -93,6 +93,7 @@ def main():
     jira_api_token = config.get("jira", "jira_api_token")
     start_date = config.get("dates", "start_date")
     end_date = config.get("dates", "end_date")
+    project_keys = config.get("projects", "project_keys")
 
     jira = JIRA(server=jira_url, basic_auth=(jira_username, jira_api_token))
 
