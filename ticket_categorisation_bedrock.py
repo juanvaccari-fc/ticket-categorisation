@@ -1,4 +1,6 @@
 import json
+import csv
+import os
 import boto3
 import configparser
 from jira import JIRA
@@ -172,9 +174,17 @@ Defined as the minimum tasks required to maintain the current level of service i
     # 2. Split tickets into batches of 10
     batch_size = 10
     print(f"Processing {len(all_tickets)} tickets in batches of {batch_size}...")
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    csv_file = os.path.join(
+        output_dir,
+        f"ticket_categorisation_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    )
+    csv_rows = []
     
     for i in range(0, len(all_tickets), batch_size):
         batch = all_tickets[i : i + batch_size]
+        batch_by_key = {ticket['key']: ticket for ticket in batch}
         print(f"\n--- Processing Batch {i//batch_size + 1} ({batch[0]['key']} to {batch[-1]['key']}) ---")
 
         # Create a clear instruction for the structure
@@ -214,14 +224,48 @@ Defined as the minimum tasks required to maintain the current level of service i
                 
                 for res in ai_results:
                     key = res.get('key')
+                    ticket = batch_by_key.get(key, {})
+                    summary = ticket.get('summary', 'Summary not found')
                     ai_cat = res.get('subCategory')
-                    jira_cat = next((t['current_jira_category'] for t in batch if t['key'] == key), "Unknown")
+                    jira_cat = ticket.get('current_jira_category', "Unknown")
                     status = "MATCH" if ai_cat == jira_cat else "MISMATCH"
-                    if status == "MISMATCH":
-                        print(f"[{status}] {key}: AI says '{ai_cat}', JIRA set to '{jira_cat}'")
-                        print(f"   Reason: {res.get('reason')}")
+                    reason = res.get('reason')
+
+                    print(f"[{status}] {key}: {summary}")
+                    print(f"   AI says '{ai_cat}', JIRA set to '{jira_cat}'")
+                    print(f"   Reason: {reason}")
+
+                    csv_rows.append({
+                        "key": key,
+                        "summary": summary,
+                        "issue_type": ticket.get('issue_type', "Unknown"),
+                        "jira_category": jira_cat,
+                        "ai_category": ai_cat,
+                        "status": status,
+                        "reason": reason,
+                        "batch": i // batch_size + 1
+                    })
             except Exception as e:
                 print(f"Failed to parse AI response for this batch: {e}")
+
+    with open(csv_file, mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=[
+                "key",
+                "summary",
+                "issue_type",
+                "jira_category",
+                "ai_category",
+                "status",
+                "reason",
+                "batch"
+            ]
+        )
+        writer.writeheader()
+        writer.writerows(csv_rows)
+
+    print(f"\nWrote results to CSV: {csv_file}")
 
 
 if __name__ == "__main__":
