@@ -13,16 +13,47 @@ It fetches issues from a targeted Jira project within a specific date window, ev
 ## Prerequisites
 1.  Python 3.7+
 2.  AWS Credentials configured on your local machine or execution environment with permissions to invoke AWS Bedrock in the target region (`eu-west-1`).
+3.  `uv` installed (recommended for environment and dependency management).
 
 ## Installation & Setup
-1.  Install the required Python packages:
+1.  Install `uv` (macOS/Homebrew):
     ```bash
-    pip install -r requirements.txt
+    brew install uv
     ```
-2.  Update the `config.properties` file with your specific execution parameters:
+2.  Create and activate a virtual environment:
+    ```bash
+    uv venv
+    source .venv/bin/activate
+    ```
+3.  Install the required Python packages:
+    ```bash
+    uv pip install -r requirements.txt
+    ```
+4.  Update the `config.properties` file with your specific execution parameters:
     * Ensure the `jira_url`, `jira_username`, and `jira_api_token` are correct.
     * Set the `start_date` and `end_date` to define the ticket resolution window.
     * Define the project keys (e.g., `project_keys = STCP`).
+
+## AWS SSO Profile Setup
+If you have not created an AWS SSO profile for this project yet, run:
+(change the profile name to suit your setup)
+```bash
+aws configure sso --profile data-production-dev-r
+```
+
+During the prompts, select the Data Production Dev account (`145953991976`) and the role you need.
+
+To log in with SSO:
+
+```bash
+aws sso login --profile data-production-dev-r
+```
+
+Optional verification:
+
+```bash
+aws sts get-caller-identity --profile data-production-dev-r
+```
 
 ## Configuration Parameters
 The application reads from `config.properties` under three main sections:
@@ -39,9 +70,19 @@ The application reads from `config.properties` under three main sections:
 4.  **Reconciliation**: The console outputs instances where the LLM's structural assessment diverges from Jira's fallback configurations ("MISMATCH"), providing a concise reasoning output.
 
 ## Running the Application
-You must first login to the Data Production Dev account (145953991976) using the terminal following instructions here:
-https://fundingcircle.atlassian.net/wiki/spaces/AIML/pages/696352803/Getting+Started+With+AWS+Bedrock
+1. Ensure your virtual environment is active:
+    ```bash
+    source .venv/bin/activate
+    ```
 
-Then execute the script from your terminal:
-```bash
-python ticket_categorisation_bedrock.py
+2. Ensure you are logged in to AWS SSO:
+    ```bash
+    aws sso login --profile data-production-dev-r
+    ```
+
+3. Run the script:
+    ```bash
+    python ticket_categorisation_bedrock.py
+    ```
+
+Reference: https://fundingcircle.atlassian.net/wiki/spaces/AIML/pages/696352803/Getting+Started+With+AWS+Bedrock
